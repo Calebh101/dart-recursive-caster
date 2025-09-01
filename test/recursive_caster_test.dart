@@ -1,4 +1,4 @@
-import 'package:recursive_caster/recursive_caster.g.dart';
+import '../example/lib/recursive_caster.g.dart';
 import 'package:test/test.dart';
 
 // We replace underscores at the end because Dart likes to sometimes use things like `_Map` instead of `Map`.

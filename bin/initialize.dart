@@ -49,12 +49,26 @@ void main(List<String> arguments) {
 types:
 
 # This is how you add types that you can convert to. This is a list of strings, where each item is the target type. Imports don't matter at this stage.
+#
 # Example:
 #
 # types:
 #   - Map<String, List<Map<String, dynamic>>>
 #   - List<Set<Map<String, List<Map<String, dynamic>>>>>
 #   - List<Map<String, num>>
+
+
+imports:
+
+# This is how you import packages for custom and non-standard types into the generated file. The syntax is:
+#   - package:example/example.dart [as prefix] [show Class1,Class2]
+# prefix and show are not required. If you supply a prefix, you will have to make sure to use the prefix in your `types` definition.
+#
+# Example:
+#
+# imports:
+#   - dart:io show File
+#   - package:flutter/material.dart as material
 """.trim();
 
   print("Writing out...");
