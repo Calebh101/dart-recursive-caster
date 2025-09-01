@@ -70,11 +70,11 @@ void main(List<String> arguments) {
     Line.comment("It's recommended to add this file to your gitignore, as it can be regenerated using your configuration file.", tabs: 0),
 
     Line.space(),
-    Line("Map<String, Function> _data = {", tabs: 0),
+    Line("Map<Type, Function> _data = {", tabs: 0),
 
     ...List.generate(data.length, (i) {
       MapEntry<String, String> entry = data.entries.toList()[i];
-      return Line('"\${${entry.key}}": ${entry.value},', tabs: 1);
+      return Line('${entry.key}: ${entry.value},', tabs: 1);
     }),
 
     Line("};", tabs: 0),
@@ -90,18 +90,15 @@ void main(List<String> arguments) {
     }),
 
     Line("static T convert<T>(Object input) {", tabs: 1),
-    Line('String type = "\$T";', tabs: 2),
-    Line("if (_data.containsKey(type)) {", tabs: 2),
-    Line("return _data[type]!(input);", tabs: 3),
+    Line("if (_data.containsKey(T)) {", tabs: 2),
+    Line("return _data[T]!(input);", tabs: 3),
     Line("} else {", tabs: 2),
     Line('throw RecursiveCasterTypeError(T);', tabs: 3),
     Line("}", tabs: 2),
     Line("}", tabs: 1),
 
-    Line.comment("This function returns a [List<Type>] of all types supported by your configuration.", tabs: 1, dartdoc: true),
-    Line("static List<Type> getAll() {", tabs: 1),
-    Line("return [${data.entries.map((x) => x.key).join(", ")}];", tabs: 2),
-    Line("}", tabs: 1),
+    Line.comment("This function returns an [Iterable<Type>] of all types supported by your configuration.", tabs: 1, dartdoc: true),
+    Line("static Iterable<Type> getAll() => _data.keys;", tabs: 1),
     Line("}", tabs: 0),
 
     Line.comment("This error is called if a casting object is not defined for the specified type.", tabs: 0, dartdoc: true),
@@ -173,11 +170,11 @@ TypeIdResult parseType(String string, int start) {
 }
 
 String getMapFunction(TypeId type) {
-  return "(${type.getBase()} value) => ${generateValueConversion(type, "value")} as ${type.toRawString()}";
+  return "(${type.getBase()} value) => ${generateValueConversion(type, "value")}";
 }
 
 String generateValueConversion(TypeId type, String variable) {
-  final base = type.type.toLowerCase();
+  String base = type.type.toLowerCase();
 
   if (base == "map") {
     TypeId key = type.children[0];
@@ -187,6 +184,9 @@ String generateValueConversion(TypeId type, String variable) {
   } else if (base == "list") {
     TypeId child = type.children[0];
     return "($variable as List).map((e) => ${generateValueConversion(child, "e")}).toList()";
+  } else if (base == "set") {
+    TypeId child = type.children[0];
+    return "($variable as Set).map((e) => ${generateValueConversion(child, "e")}).toSet()";
   } else {
     return "$variable as ${type.toRawString()}";
   }
@@ -257,7 +257,7 @@ class TypeId {
       case "map": return "Map";
       case "list": return "List";
       case "set": return "Set";
-      default: throw Exception("Unknown base: $type");
+      default: return type;
     }
   }
 }
