@@ -193,8 +193,19 @@ String generateValueConversion(TypeId type, String variable) {
   }
 }
 
-List<Line> getImportLines(List<String> imports) {
+List<Line> getImportLines(List<String> imports, {int tabs = 0}) {
   // Syntax will be: package:example/example.dart [as prefix] [show Class1,Class2]
+  List<Line> result = [];
+
+  for (String line in imports) {
+    List<String> parts = (line.split(RegExp("(?:as|show)", caseSensitive: false)));
+    String path = parts.first.replaceAll("'", "").replaceAll("\"", "");
+
+    List<String> text = ["import '$path'", ";"];
+    result.add(Line(text.join(" "), tabs: tabs));
+  }
+
+  return result;
 }
 
 class Line {
