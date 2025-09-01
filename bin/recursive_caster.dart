@@ -97,6 +97,11 @@ void main(List<String> arguments) {
     Line('throw RecursiveCasterTypeError(T);', tabs: 3),
     Line("}", tabs: 2),
     Line("}", tabs: 1),
+
+    Line.comment("This function returns a [List<Type>] of all types supported by your configuration.", tabs: 1, dartdoc: true),
+    Line("static List<Type> getAll() {", tabs: 1),
+    Line("return [${data.entries.map((x) => x.key).join(", ")}];", tabs: 2),
+    Line("}", tabs: 1),
     Line("}", tabs: 0),
 
     Line.comment("This error is called if a casting object is not defined for the specified type.", tabs: 0, dartdoc: true),
@@ -168,7 +173,7 @@ TypeIdResult parseType(String string, int start) {
 }
 
 String getMapFunction(TypeId type) {
-  return "(${type.getBase()} value) => ${generateValueConversion(type, "value")}";
+  return "(${type.getBase()} value) => ${generateValueConversion(type, "value")} as ${type.toRawString()}";
 }
 
 String generateValueConversion(TypeId type, String variable) {

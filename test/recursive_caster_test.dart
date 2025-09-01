@@ -4,6 +4,8 @@ import 'package:test/test.dart';
 // We replace underscores at the end because Dart likes to sometimes use things like `_Map` instead of `Map`.
 
 void main() {
+  List<Type> currentTypes = RecursiveCaster.getAll();
+
   group("Test conversions from raw objects", () {
     test("Map<String, List<Map<String, dynamic>>>", () {
       Map item = {
