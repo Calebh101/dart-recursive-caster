@@ -43,8 +43,8 @@ void main(List<String> arguments) {
 
   String output = """
 # This is the configuration file for recursive_caster.
-# To reinitialize: dart run recursive_caster:initialize
-# To generate: dart run recursive_caster
+# To initialize the configuration file: dart run recursive_caster:initialize
+# To generate the library file: dart run recursive_caster
 
 
 types:
@@ -62,14 +62,24 @@ types:
 imports:
 
 # This is how you import packages for custom and non-standard types into the generated file. The syntax is:
-#   - package:example/example.dart [as prefix] [show Class1,Class2]
-# prefix and show are not required. If you supply a prefix, you will have to make sure to use the prefix in your `types` definition.
+#   - package:example/example.dart [as prefix] [show Class1, Class2]
+# prefix and show are not required. If you supply a prefix, make sure to use the 'prefixes' field.
 #
 # Example:
 #
 # imports:
-#   - dart:io show File
+#   - dart:io show File, Directory
 #   - package:flutter/material.dart as material
+#
+# Make sure that the 'as' comes before the 'show', and that 'show' items are separated by commas. You can also put quotes around the path and 'as' values, and if you wanted, you could put 'import' at the beginning.
+
+prefixes:
+
+# This is how you set prefixes for certain types, where file conflicts may be an issue.
+# 'prefixes' is a dictionary of type string, string. The key is the type that needs the prefix, and the value is the prefix to be used. Note that keys are case sensitive.
+# Example:
+# prefixes:
+#   "Example": "example"
 """.trim();
 
   print("Writing out...");
