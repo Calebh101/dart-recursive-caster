@@ -255,7 +255,7 @@ List<Line> getImportLines(List<String> imports, {int tabs = 0}) {
   List<Line> result = [];
   String quote = "(?:['\"`])?";
   String any1 = "[A-Za-z0-9:_./]+";
-  RegExp regex = RegExp("(?:import )?$quote($any1)$quote(?: as $quote($any1)$quote)?(?: show $quote([A-Za-z0-9:_.,/ ]+)$quote)?");
+  RegExp regex = RegExp("(?:import )?$quote($any1)$quote(?: as $quote($any1)$quote)?(?: show ([A-Za-z0-9:_.,\"'`/ ]+))?");
   verbose("Using import regex ${regex.pattern}...");
 
   for (String line in imports) {
@@ -272,7 +272,8 @@ List<Line> getImportLines(List<String> imports, {int tabs = 0}) {
     List<String> show = [];
 
     if (showLine != null) {
-      show = showLine.split(",").map((x) => x.trim()).toList();
+      // Remove quotes from matches, separate by commas, trim each new string, then set it to [show] as a list
+      show = showLine.replaceAll(RegExp("[\"'`]"), "").split(",").map((x) => x.trim()).toList();
     }
 
     List<String> text = ["import '$path'", if (prefix != null) "as $prefix", if (show.isNotEmpty) "show ${show.join(", ")}", ";"];
