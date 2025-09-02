@@ -6,11 +6,16 @@ I can't make a one-and-done solution, as that's just not possible with a standar
 
 Note that this package is in beta right now.
 
+## Installation
+
+- Add `recursive_caster` to `dev_dependencies` in your `pubspec.yaml`.
+- Run `dart pub get` or `flutter pub get`.
+
 ## Setup
 
 To start, you'll need to create a configuration file. Luckily, this can be done for you.
 
-In the root of the project directory (or specify a relative/absolute directory using `--project-dir=`), run this command: `dart run recursive_caster:initialize`. Run with `--help` for available arguments.
+In the root of the project directory (or specify a relative/absolute directory using `--project-dir=`), run this command: `dart run recursive_caster:initialize` (or the flutter equivalent). Run with `--help` for available arguments.
 
 This will create a configuration file named `recursive_caster.yaml`. If a configuration file already exists, then it will prompt you to overwrite it. This will *not* keep any of your settings.
 
