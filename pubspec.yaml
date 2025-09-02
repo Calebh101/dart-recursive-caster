@@ -1,6 +1,6 @@
 name: recursive_caster
 description: A library for simplifying recursive casting for objects.
-version: 1.0.0
+version: 0.0.0
 repository: https://github.com/Calebh101/dart-recursive-caster
 
 environment:

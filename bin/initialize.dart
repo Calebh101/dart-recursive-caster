@@ -49,7 +49,7 @@ void main(List<String> arguments) {
 
 types:
 
-# This is how you add types that you can convert to. This is a list of strings, where each item is the target type. Imports don't matter at this stage.
+# This is how you add types that you can cast to. This is a list of strings, where each item is the target type. Imports don't matter at this stage.
 #
 # Example:
 #

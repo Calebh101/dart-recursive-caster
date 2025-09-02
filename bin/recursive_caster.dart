@@ -18,8 +18,10 @@ void main(List<String> arguments) {
 
   ArgParser parser = ArgParser()
     ..addOption("project-root", help: "Root of your project. This defaults to the current working directory.")
+    ..addOption("library-directory", help: "The directory that the generated library file will be placed. This is relative to the project root.", defaultsTo: "lib")
     ..addFlag("help", abbr: "h", help: "Show usage.")
-    ..addFlag("verbose", abbr: "v", help: "Show extra logs. This is helpful in debugging.");
+    ..addFlag("verbose", abbr: "v", help: "Show extra logs. This is helpful in debugging.")
+    ..addFlag("compact", help: "Strip comments and line breaks from the generated library file.");
 
   ArgResults args = (() {
     try {
@@ -33,7 +35,7 @@ void main(List<String> arguments) {
   })();
 
   if (args["help"] == true) {
-      print("");
+    print("");
     print("Usage:\n${parser.usage}");
     exit(0);
   }
@@ -51,18 +53,24 @@ void main(List<String> arguments) {
     //
   }
 
-  Directory lib = Directory(p.joinAll([root.path, "lib"]));
+  String libdir = args["library-directory"];
+  Directory lib = Directory(p.joinAll([root.path, libdir]));
   File file = File(p.joinAll([lib.path, "recursive_caster.g.dart"]));
   File settingsFile = File(p.joinAll([root.path, "recursive_caster.yaml"]));
   print("Using library directory ${lib.path}...");
 
-  if (FileStat.statSync(p.joinAll([root.path, "pubspec.yaml"])).type == FileSystemEntityType.notFound || !lib.existsSync()) {
-    print("The specified root directory is not a Dart project with a 'lib' folder. ${FileStat.statSync(p.joinAll([root.path, "pubspec.yaml"])).type}:${lib.existsSync()}");
+  if (FileStat.statSync(p.joinAll([root.path, "pubspec.yaml"])).type == FileSystemEntityType.notFound) {
+    print("The specified root directory is not a Dart project with a valid pubspec.yaml.");
     exit(1);
   }
 
   if (!settingsFile.existsSync()) {
     print("The specified project does not contain a valid recursive_caster settings file. Please run:\n   dart run recursive_caster.dart:initialize\nOr add the settings file yourself at ${settingsFile.path}.");
+    exit(1);
+  }
+
+  if (!lib.existsSync()) {
+    print("The specified library directory ($libdir) does not exist at ${lib.path}.");
     exit(1);
   }
 
@@ -100,24 +108,14 @@ void main(List<String> arguments) {
     Line.comment("It's recommended to add this file to your gitignore, as it can be regenerated using your configuration file.", tabs: 0),
     Line.space(overrideSpace: true),
     Line.comment("Any modifications to this file are not saved. If you need customizations that this package doesn't provide, feel free to make an issue or pull request on GitHub.", tabs: 0),
-    Line.comment("Don't even try to read this file.", tabs: 0),
+    Line.comment("You shouldn't try to read this file, as it'll be harder to follow than the actual generator script.", tabs: 0),
 
-    Line.space(overrideSpace: true),
-    Line.space(overrideSpace: true),
-    Line.comment("---------- START ----------", tabs: 0),
-
-    // Include required imports, and declare _data as a Map<Type, Function>.
+    // Start generation and include required imports.
+    ...(Line.space(overrideSpace: true) * 3),
+    Line.comment("-------------------- START GENERATION --------------------", tabs: 0, doubleSided: true),
     ...getImportLines(imports),
-    Line("Map<Type, Function> _data = {", tabs: 0),
 
-    // Loop through each type and add it as a type-function pair.
-    ...List.generate(data.length, (i) {
-      MapEntry<String, String> entry = data.entries.toList()[i];
-      return Line('${entry.key}: ${entry.value},', tabs: 1);
-    }),
-
-    // End _data declaration, and add [RecursiveCaster] class (and privatize constructor). Then add DartDoc documentation.
-    Line("};", tabs: 0),
+    // Declare [RecursiveCaster] class (and privatize constructor). Then add DartDoc documentation.
     Line.comment("This is the main class for the casting library.", tabs: 0, dartdoc: true),
     Line("class RecursiveCaster {", tabs: 0),
     Line("RecursiveCaster._();", tabs: 1),
@@ -131,18 +129,20 @@ void main(List<String> arguments) {
       return Line.comment("- [${string(false)}] (`${string(false)}`)", tabs: 1, dartdoc: true);
     }),
 
-    // Declare the main converting function.
-    Line("static T convert<T>(Object input) {", tabs: 1),
-    Line("if (_data.containsKey(T)) {", tabs: 2),
-    Line("return _data[T]!(input);", tabs: 3),
-    Line("} else {", tabs: 2),
-    Line('throw RecursiveCasterTypeError(T);', tabs: 3),
-    Line("}", tabs: 2),
+    // Declare the main casting function. We use a series of if checks to check if the type matches. If all else fails, we'll throw a RecursiveCasterTypeError.
+    Line("static T cast<T>(Object? input) {", tabs: 1),
+
+    ...List.generate(data.length, (i) {
+      MapEntry<String, String> entry = data.entries.toList()[i];
+      return Line('if (T == ${entry.key}) return (${entry.value})(input) as T;', tabs: 2);
+    }),
+
+    Line('throw RecursiveCasterTypeError(T);', tabs: 2),
     Line("}", tabs: 1),
 
     // Declare the getAll function, which returns the keys of _data.
     Line.comment("This function returns an [Iterable<Type>] of all types supported by your configuration.", tabs: 1, dartdoc: true),
-    Line("static Iterable<Type> getAll() => _data.keys;", tabs: 1),
+    Line("static Iterable<Type> getAll() => [${foundTypes.map((type) => type.toRawString()).join(", ")}];", tabs: 1),
     Line("}", tabs: 0),
 
     // Declare RecursiveCasterTypeError error, which is called if the casting object is not defined for the specified type.
@@ -155,13 +155,19 @@ void main(List<String> arguments) {
     Line.comment("[type] is the type that was specified.", tabs: 1, dartdoc: true),
     Line("RecursiveCasterTypeError(this.type);", tabs: 1),
     Line("@override", tabs: 1),
-    Line('String toString() => "RecursiveCasterTypeError: Could not find type \$type to be converted. (Did you forget to add the type to your configuration?)";', tabs: 1),
+    Line('String toString() => "RecursiveCasterTypeError: Could not find type \$type to be casted. (Did you forget to add the type to your configuration?)";', tabs: 1),
     Line("}", tabs: 0),
   ];
 
   verbose("Generated ${lines.length} pseudo-lines...");
   print("Writing out file...");
-  file.writeAsStringSync(lines.process());
+  file.writeAsStringSync(lines.process(ultraCompact: args["compact"] == true));
+}
+
+extension on Line {
+  List<Line> operator *(int other) {
+    return List.generate(other, (i) => this);
+  }
 }
 
 TypeId processTypes(String typeString) {
@@ -217,17 +223,21 @@ TypeIdResult parseType(String string, int start) {
 }
 
 String getMapFunction(TypeId type) {
-  return "(${type.getBase()} value) => ${generateValueConversion(type, "value")}";
+  return "(dynamic value) => ${generateValueConversion(type, "value")}";
 }
 
 String generateValueConversion(TypeId type, String variable) {
+  // Reserved variables:
+    // e: Map, List, Set
+    // a: Map
+
   String base = type.type.toLowerCase();
 
   if (base == "map") {
     TypeId key = type.children[0];
     TypeId value = type.children[1];
 
-    return "Map<${key.toRawString()}, ${value.toRawString()}>.from($variable.map((k, v) => MapEntry(k as ${key.toRawString()}, ${generateValueConversion(value, "v")})))";
+    return "Map<${key.toRawString()}, ${value.toRawString()}>.from($variable.map((e, a) => MapEntry(${generateValueConversion(value, "e")}, ${generateValueConversion(value, "a")})))";
   } else if (base == "list") {
     TypeId child = type.children[0];
     return "($variable as List).map((e) => ${generateValueConversion(child, "e")}).toList()";
@@ -282,7 +292,7 @@ class Line {
 
   const Line(this.text, {required this.tabs, this.overrideSpace = false}) : _isComment = false, _isSpace = false;
   const Line.space({this.overrideSpace = false}) : text = "", tabs = 0, _isComment = false, _isSpace = true;
-  const Line.comment(String comment, {required this.tabs, bool dartdoc = false, this.overrideSpace = false}) : text = "${dartdoc ? "/" : ""}// $comment", _isComment = true, _isSpace = false;
+  const Line.comment(String comment, {required this.tabs, bool dartdoc = false, bool doubleSided = false, this.overrideSpace = false}) : text = "${dartdoc ? "/" : ""}// $comment${doubleSided ? " ${dartdoc ? "/" : ""}//" : ""}", _isComment = true, _isSpace = false;
   const Line.commentSpace({required this.tabs, bool dartdoc = false, this.overrideSpace = false}) : text = "${dartdoc ? "/" : ""}//", _isComment = true, _isSpace = true;
 
   bool get isComment => _isComment;
@@ -290,7 +300,12 @@ class Line {
 }
 
 extension ProcessLines on List<Line> {
-  String process({int extraTabs = 0, bool compressed = true, bool removeComments = false}) {
+  String process({int extraTabs = 0, bool compressed = false, bool removeComments = false, bool ultraCompact = false}) {
+    if (ultraCompact) { // This overrides [compressed] and [removeComments].
+      compressed = true;
+      removeComments = true;
+    }
+
     List<Line> lines = this; // New object (we can't say this = this.where(...))
     if (removeComments) lines = lines.where((x) => !x.isComment).toList(); // This one is just for fun, as users will probably prefer DartDocs.
 

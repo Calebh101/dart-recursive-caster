@@ -1,4 +1,4 @@
-import '../example/lib/main.dart';
+import '../example/lib/example.dart';
 import 'package:test/test.dart';
 
 // We replace underscores at the end because Dart likes to sometimes use things like `_Map` instead of `Map`.
@@ -35,7 +35,7 @@ void main() {
         }
       ];
 
-      List<Set<Map<String, List<Map<String, dynamic>>>>> converted = RecursiveCaster.convert(item);
+      List<Set<Map<String, List<Map<String, dynamic>>>>> converted = RecursiveCaster.cast(item);
       expect(converted.runtimeType.toString().replaceAll("_", ""), equals("List<Set<Map<String, List<Map<String, dynamic>>>>>".replaceAll("_", "")));
     });
 
@@ -45,7 +45,7 @@ void main() {
         Example<String>(),
       ];
 
-      List<Example<String>> converted = RecursiveCaster.convert(item);
+      List<Example<String>> converted = RecursiveCaster.cast(item);
       expect(converted.runtimeType.toString().replaceAll("_", ""), equals("List<Example<String>>".replaceAll("_", "")));
     });
   });
