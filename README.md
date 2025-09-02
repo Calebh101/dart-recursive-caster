@@ -8,14 +8,14 @@ Note that this package is in beta right now.
 
 ## Installation
 
-- Add `recursive_caster` to `dev_dependencies` in your `pubspec.yaml`.
+- Add `recursive_caster` to `dev_dependencies` in your `pubspec.yaml` (or by `dart pub add --dev recursive_caster` or Flutter equivalent).
 - Run `dart pub get` or `flutter pub get`.
 
 ## Setup
 
 To start, you'll need to create a configuration file. Luckily, this can be done for you.
 
-In the root of the project directory (or specify a relative/absolute directory using `--project-dir=`), run this command: `dart run recursive_caster:initialize` (or the flutter equivalent). Run with `--help` for available arguments.
+In the root of the project directory (or specify a relative/absolute directory using `--project-dir=`), run this command: `dart run recursive_caster:initialize` (or the Flutter equivalent). Run with `--help` for available arguments.
 
 This will create a configuration file named `recursive_caster.yaml`. If a configuration file already exists, then it will prompt you to overwrite it. This will *not* keep any of your settings.
 
@@ -33,10 +33,16 @@ You'll need to import `recursive_caster.g.dart` into any files you use the recur
 
 `RecursiveCaster.getAll()` returns an `Iterable<Type>` of all the available types to be casted to.
 
-`RecursiveCaster.cast()` returns the inputted `Object?`, but casted as the inputted `T`. Example:
+`RecursiveCaster.cast()` returns the inputted `Object?`, but recursively casted as the inputted `T`. Example:
 
 ```dart
 List<String> myList = RecursiveCaster.cast<List<String>>(<dynamic>["Hello", "world!"]);
 ```
 
 You can see more detailed examples in `example/example.dart`.
+
+## Error Handling
+
+If `RecursiveCaster.cast()` is requested but with a type that isn't present in the configuration, then it will throw a `RecursiveCasterTypeError` error with the requested type.
+
+If there is a general casting error, then that will go unhandled and will be thrown as a generic `TypeError`.
