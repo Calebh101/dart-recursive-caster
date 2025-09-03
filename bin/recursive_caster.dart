@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:collection/collection.dart';
 import 'package:path/path.dart' as p;
 import 'package:yaml/yaml.dart';
 
@@ -81,11 +82,11 @@ void main(List<String> arguments) {
   List<String> types = ((settings["types"] as List?) ?? []).whereType<String>().toList();
 
   verbose("Loading inputted imports...");
-  List<String> imports = ((settings["imports"] as List?) ?? []).whereType<String>().toList();
+  List<String> importsData = ((settings["imports"] as List?) ?? []).whereType<String>().toList();
 
   verbose("Loading inputted prefixes...");
   YamlMap prefixData = (settings["prefixes"] ?? YamlMap());
-  Map<String, String> data = {};
+  Map<String, Map<String, dynamic>> data = {};
   List<TypeId> foundTypes = [];
   print("Loading types...");
 
@@ -99,8 +100,16 @@ void main(List<String> arguments) {
     TypeId type = processTypes(typeString);
     String function = getMapFunction(type);
     foundTypes.add(type);
-    data[type.toRawString()] = function;
+
+    data[type.toRawString()] = {
+      "function": function,
+      "libraries": type.getAllLibraries(),
+    };
   }
+
+  print("Loading imports...");
+  List<Import> imports = getImportLines(importsData);
+  bool anyDeferred = imports.any((x) => x.deferred);
 
   List<Line> lines = [
     // Comments
@@ -113,7 +122,7 @@ void main(List<String> arguments) {
     // Start generation and include required imports.
     ...(Line.space(overrideSpace: true) * 3),
     Line.comment("-------------------- START GENERATION --------------------", tabs: 0, doubleSided: true),
-    ...getImportLines(imports),
+    ...imports.map((x) => x.line).whereType<Line>(),
 
     // Declare [RecursiveCaster] class (and privatize constructor). Then add DartDoc documentation.
     Line.comment("This is the main class for the casting library.", tabs: 0, dartdoc: true),
@@ -130,11 +139,13 @@ void main(List<String> arguments) {
     }),
 
     // Declare the main casting function. We use a series of if checks to check if the type matches. If all else fails, we'll throw a RecursiveCasterTypeError.
-    Line("static T cast<T>(Object? input) {", tabs: 1),
+    Line("static ${anyDeferred ? "Future<T>" : "T"} cast<T>(Object? input) ${anyDeferred ? "async" : ""} {", tabs: 1),
 
     ...List.generate(data.length, (i) {
-      MapEntry<String, String> entry = data.entries.toList()[i];
-      return Line('if (T == ${entry.key}) return (${entry.value})(input) as T;', tabs: 2);
+      MapEntry<String, Map<String, dynamic>> entry = data.entries.toList()[i];
+      String function = entry.value["function"];
+      List<String> libraries = entry.value["libraries"];
+      return Line('${anyDeferred ? libraries.map((library) => "await $library.loadLibrary();").join(" ") : ""} if (T == ${entry.key}) return ($function)(input) as T;', tabs: 2);
     }),
 
     Line('throw RecursiveCasterTypeError(T);', tabs: 2),
@@ -237,7 +248,7 @@ String generateValueConversion(TypeId type, String variable) {
     TypeId key = type.children[0];
     TypeId value = type.children[1];
 
-    return "Map<${key.toRawString()}, ${value.toRawString()}>.from($variable.map((e, a) => MapEntry(${generateValueConversion(value, "e")}, ${generateValueConversion(value, "a")})))";
+    return "Map<${key.toRawString()}, ${value.toRawString()}>.from($variable.map((e, a) => MapEntry(${generateValueConversion(key, "e")}, ${generateValueConversion(value, "a")})))";
   } else if (base == "list") {
     TypeId child = type.children[0];
     return "($variable as List).map((e) => ${generateValueConversion(child, "e")}).toList()";
@@ -249,38 +260,52 @@ String generateValueConversion(TypeId type, String variable) {
   }
 }
 
-List<Line> getImportLines(List<String> imports, {int tabs = 0}) {
-  // Syntax will be: package:example/example.dart [as prefix] [show Class1, Class2]
+List<Import> getImportLines(List<String> imports, {int tabs = 0}) {
+  // Syntax will be: package:example/example.dart [deferred] [as prefix] [show Class1, Class2]
   print("Processing imports...");
-  List<Line> result = [];
+
+  List<Import> result = [];
   String quote = "(?:['\"`])?";
   String any1 = "[A-Za-z0-9:_./]+";
-  RegExp regex = RegExp("(?:import )?$quote($any1)$quote(?: as $quote($any1)$quote)?(?: show ([A-Za-z0-9:_.,\"'`/ ]+))?");
-  verbose("Using import regex ${regex.pattern}...");
+  RegExp regex = RegExp("(?:import )?$quote($any1)$quote(?:( deferred)? as $quote($any1)$quote)?(?: show ([A-Za-z0-9:_.,\"'`/ ]+))?");
+  verbose("Using import regex '${regex.pattern}'...");
 
-  for (String line in imports) {
-    RegExpMatch? match = regex.allMatches(line).firstOrNull;
+  for (String import in imports) {
+    RegExpMatch? match = regex.allMatches(import).firstOrNull;
 
     if (match == null || match.groupCount <= 0) {
-      print("Unable to process import '$line'!");
+      print("Unable to process import '$import'! ${match == null ? "No match was found for regex '${regex.pattern}'." : "No groups were found in the first match for regex '${regex.pattern}'."}");
       continue;
     }
 
     String path = match.group(1)!;
-    String? prefix = match.group(2);
-    String? showLine = match.group(3);
+    String? prefix = match.group(3);
+    String? showLine = match.group(4);
     List<String> show = [];
+    bool deferred = prefix != null && (match.group(2)?.contains("deferred") ?? false);
 
     if (showLine != null) {
       // Remove quotes from matches, separate by commas, trim each new string, then set it to [show] as a list
       show = showLine.replaceAll(RegExp("[\"'`]"), "").split(",").map((x) => x.trim()).toList();
     }
 
-    List<String> text = ["import '$path'", if (prefix != null) "as $prefix", if (show.isNotEmpty) "show ${show.join(", ")}", ";"];
-    result.add(Line(text.join(" "), tabs: tabs));
+    print("Found import of path '$path', prefix '$prefix', and deferred=$deferred");
+    List<String> text = ["import '$path'", if (deferred) "deferred", if (prefix != null) "as $prefix", if (show.isNotEmpty) "show ${show.join(", ")}", ";"];
+    Line line = Line(text.join(" "), tabs: tabs);
+    result.add(Import(path, line: line, prefix: prefix, show: show, deferred: deferred));
   }
 
   return result;
+}
+
+class Import {
+  final Line? line;
+  final String path;
+  final String? prefix;
+  final List<String> show;
+  final bool deferred;
+
+  const Import(this.path, {this.line, this.prefix, this.show = const [], this.deferred = false});
 }
 
 class Line {
@@ -333,7 +358,8 @@ class TypeId {
   @override
   bool operator ==(Object other) {
     if (other is! TypeId) return false;
-    return type == other.type;
+    ListEquality equality = ListEquality();
+    return type == other.type && equality.equals(children, other.children);
   }
   
   @override
@@ -371,6 +397,16 @@ class TypeId {
       case "set": return "Set";
       default: return type;
     }
+  }
+
+  List<String> getAllLibraries() {
+    List<String?> results = [prefix];
+
+    for (TypeId child in children) {
+      results.addAll(child.getAllLibraries());
+    }
+
+    return results.whereType<String>().toList();
   }
 }
 
