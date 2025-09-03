@@ -296,7 +296,7 @@ List<Import> getImportLines(List<String> imports, {int tabs = 0}) {
       show = showLine.replaceAll(RegExp("[\"'`]"), "").split(",").map((x) => x.trim()).toList();
     }
 
-    print("Found import of path '$path', prefix '$prefix'");
+    verbose("Found import of path '$path', prefix '$prefix'");
     List<String> text = ["import '$path'", if (prefix != null) "as $prefix", if (show.isNotEmpty) "show ${show.join(", ")}", ";"];
     Line line = Line(text.join(" "), tabs: tabs);
     result.add(Import(path, line: line, prefix: prefix, show: show, deferred: deferred));

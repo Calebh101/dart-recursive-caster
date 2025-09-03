@@ -18,7 +18,7 @@ types:
 
 
 imports:
-  - example.dart deferred as main
+  - example.dart as main
 
 # This is how you import packages for custom and non-standard types into the generated file. The syntax is:
 #   - package:example/example.dart [as prefix] [show Class1,Class2]

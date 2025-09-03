@@ -72,6 +72,7 @@ imports:
 #   - package:flutter/material.dart as material
 #
 # Make sure that the 'as' comes before the 'show', and that 'show' items are separated by commas. You can also put quotes around the path and 'as' values, and if you wanted, you could put 'import' at the beginning.
+# Note that deferred imports are not supported, and will be ignored.
 
 prefixes:
 
