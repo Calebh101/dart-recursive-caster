@@ -15,7 +15,7 @@ If you want to use the GitHub version, add this to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  package_name:
+  recursive_caster:
     git:
       url: https://github.com/Calebh101/dart-recursive-caster.git
       ref: main
