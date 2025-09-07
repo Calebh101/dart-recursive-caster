@@ -11,6 +11,16 @@ Note that this package is in beta right now.
 - Add `recursive_caster` to `dev_dependencies` in your `pubspec.yaml` (or by `dart pub add --dev recursive_caster` or Flutter equivalent).
 - Run `dart pub get` or `flutter pub get`.
 
+If you want to use the GitHub version, add this to your `pubspec.yaml`:
+
+```yaml
+dev_dependencies:
+  package_name:
+    git:
+      url: https://github.com/Calebh101/dart-recursive-caster.git
+      ref: main
+```
+
 ## Setup
 
 To start, you'll need to create a configuration file. Luckily, this can be done for you.
